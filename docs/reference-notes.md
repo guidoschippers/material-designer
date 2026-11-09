@@ -53,3 +53,54 @@ Two bases, for floors and beams:
    parameter `weathering`. Example: `--set plank_width=1 --set plank_length=1 --set plank_gap=0
    --set grain_scale=0.7 --set ring_density=0.35 --set figure=1 --set fibrous=0.7 --set stain=0.9
    --set ring_contrast=0.7 --set gloss=0.2 --set weathering=0.5 --set scratches=0.15 --wear 1`.
+
+## Cardboard
+
+For the moving box in the attic of the Racecars main menu (no photo; described by the owner):
+the outside of an old brown corrugated shipping box, single-wall board with a kraft liner.
+
+- Kraft brown liner, slightly mottled, with fine light and dark paper fibres (lying mostly across
+  the flutes, the paper's machine direction), a few dark woody shives and small recycled specks.
+- The flutes faintly show through the liner as subtle parallel ridges, only in relief (normal map),
+  hardly in colour. **The flutes run along V**: each ridge is a vertical line of constant u, repeating
+  across U (`flute_spacing`, rounded so the texture tiles).
+- Matte paper roughness with slight variation.
+- Wear of a box that has spent years in an attic: abraded scuffs (lighter, fuzzy), fold creases
+  (groove, crushed flutes, a light cracked line) and soft dents, water stains with darker tide-mark
+  rings, greyish dust collecting in low areas, faint yellowed tape residue with torn paper.
+  Example for an old, worn moving box: `--seed 1998 --wear 0.8 --set scuffs=0.6 --set creases=0.6
+  --set dents=0.4 --set water_stains=0.5 --set dirt=0.6 --set tape_residue=0.3`.
+
+## Plastic
+
+For the late-90s electronics in the attic (a PS1-style console, a VCR, a game controller); no
+photo, described by the owner.
+
+- Moulded ABS / polystyrene in one uniform colour: light warm grey for the console, near-black for
+  the VCR, dark grey for the controller.
+- Housings mostly have the fine spark-eroded (EDM) matte texture of the mould: densely overlapping
+  shallow craters, visible in the normal map and as a matte roughness (`texture`, `texture_scale`,
+  `texture_depth`, `roughness_min` / `roughness_max`). Glossy parts use `texture` 0.
+- Optional moulding defects: faint wavy flow lines (gloss bands) and soft sink marks.
+- Wear: fine scratches and scuffed patches (stress-whitened, lighter on dark plastic), areas polished
+  glossy by hands, a light grey dust film, dark grime in the texture, UV yellowing of light plastic
+  (`yellowing`, `yellowing_tint`) and small dings with a whitened rim.
+  Examples: grey console `--set yellowing=0.5 --wear 0.6`; black VCR `--set color=#1c1c1e --set dust=0.8
+  --wear 0.7`; controller `--set color=#3c3d40 --set hand_polish=0.8 --wear 0.8`.
+
+## CRT glass
+
+For the old TV in the attic; no photo, described by the owner. The glass layer of the screen, seen
+switched off or over a picture that comes from elsewhere.
+
+- Near-black, slightly grey-green, very smooth glass: the roughness and normal maps matter most, the
+  albedo is dark. An optional anti-glare coating makes it matte with a fine micro-texture.
+- Optionally a faint phosphor pattern behind the glass: a delta shadow mask (RGB dots, most TVs) or an
+  aperture grille (RGB stripes, Trinitron), with `mask_pitch` as the distance between phosphors of the
+  same colour. Below about two pixels per phosphor the pattern fades out instead of aliasing.
+- Wear: a light dust film with specks (the film keeps a blurred reflection, specks are fully matte),
+  greasy fingerprints with whorl and loop ridges and smeared smudges (roughness blotches), fine
+  circular wipe streaks from a cloth.
+- No opacity map: base materials are opaque in this tool. For a transparent glass layer over a
+  picture, use a constant alpha in the shader (or the wear mask, which marks the dust and grease).
+  Example: `--wear 0.8 --set dust=0.6 --set fingerprints=0.45 --set wipe_streaks=0.3`.

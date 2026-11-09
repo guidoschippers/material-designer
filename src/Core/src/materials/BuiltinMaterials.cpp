@@ -8,8 +8,11 @@
 
 #include "materials/Asphalt.h"
 #include "materials/AsphaltEdge.h"
+#include "materials/Cardboard.h"
 #include "materials/Concrete.h"
+#include "materials/CrtGlass.h"
 #include "materials/Grass.h"
+#include "materials/Plastic.h"
 #include "materials/RoadMarking.h"
 #include "materials/Wood.h"
 
@@ -22,6 +25,9 @@ void registerBuiltinMaterials(MaterialRegistry& registry)
     registry.add(std::make_unique<ConcreteMaterial>());
     registry.add(std::make_unique<WoodMaterial>());
     registry.add(std::make_unique<GrassMaterial>());
+    registry.add(std::make_unique<CardboardMaterial>());
+    registry.add(std::make_unique<PlasticMaterial>());
+    registry.add(std::make_unique<CrtGlassMaterial>());
 
     // Overlays
     registry.add(std::make_unique<AsphaltEdgeMaterial>());

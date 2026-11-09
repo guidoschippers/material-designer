@@ -27,6 +27,23 @@ struct Domain {
     float aa() const { return 1.5f * pixel; }
 };
 
+/// Stable id of grid cell (gx, gy) on a grid of `cells` per tile edge. gx/gy are unwrapped
+/// indices (they may lie outside [0, cells)); they wrap on seamless axes so that a feature placed
+/// in a cell is identical on both sides of the tile edge.
+inline std::uint32_t cellId(int gx, int gy, int cells, std::uint32_t seed, const Domain& d)
+{
+    return noise::hashCell(noise::wrapIndex(gx, d.seamlessU ? cells : 0), noise::wrapIndex(gy, d.seamlessV ? cells : 0),
+                           seed);
+}
+
+/// Distance from p to the line segment a-b.
+inline float segmentDistance(Vec2 p, Vec2 a, Vec2 b)
+{
+    const Vec2 ap = p - a, ab = b - a;
+    const float t = saturate(dot(ap, ab) / std::max(dot(ab, ab), 1e-12f));
+    return length(ap - ab * t);
+}
+
 /// Fades a feature in as `amount` goes from 0 to 1, using a low-frequency mask so that the
 /// feature appears in patches rather than uniformly. Returns 0 for amount <= 0.
 inline float patchyMask(float u, float v, float amount, int freq, std::uint32_t seed, const Domain& d)
