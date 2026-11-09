@@ -9,6 +9,8 @@ Two front-ends share one generation core:
 - **`material-designer.exe`**: interactive GUI (Dear ImGui + DirectX 11) with live preview.
 - **`material-designer-cli.exe`**: scriptable, deterministic command-line tool with JSON output.
 
+![GUI](docs/images/gui.jpg)
+
 ## Materials
 
 | Id | Kind | Highlights |
@@ -23,9 +25,22 @@ Two front-ends share one generation core:
 Base materials tile seamlessly on both axes. Overlays add an **opacity** map and are blended
 over a base material (as a decal or on a separate strip of geometry).
 
+![Base materials: albedo, worn albedo and normal maps](docs/images/materials.jpg)
+
+![Overlays blended over asphalt, with their opacity maps](docs/images/overlays.jpg)
+
 Every material has: resolution (64-8192), seed, seamless toggle, wear toggle + amount, map
 selection and DirectX/OpenGL normal maps. Same seed + settings = byte-identical output, in the
 GUI and the CLI.
+
+## GUI
+
+One tab per material; every control is generated from the material's parameter schema
+(hover for a tooltip, right-click to reset). The preview regenerates automatically on a background
+thread (low resolution while dragging a slider) and offers a map selector, a 2x2 tiling check,
+zoom (mouse wheel) and pan (drag). Overlays are shown over a checkerboard. Window size and position,
+the last export and preset folders and the last settings of every material are remembered in
+`%APPDATA%\material-designer\gui-settings.json`.
 
 ## Command line
 

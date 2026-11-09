@@ -3,6 +3,7 @@
 // The application UI: one tab per registered material (settings generated from the schema),
 // a live preview and the preset/export actions.
 
+#include "AppSettings.h"
 #include "D3DContext.h"
 #include "GenerationWorker.h"
 #include "PreviewPanel.h"
@@ -15,7 +16,11 @@
 
 class MainWindow {
 public:
-    MainWindow(HWND hwnd, D3DContext& d3d);
+    /// Restores folders, preview size, active tab and the last settings per material.
+    MainWindow(HWND hwnd, D3DContext& d3d, const AppSettings& saved);
+
+    /// Stores folders, preview size, active tab and the current settings per material.
+    void saveTo(AppSettings& settings) const;
 
     /// Builds the UI for one frame (between ImGui::NewFrame and ImGui::Render).
     void frame();

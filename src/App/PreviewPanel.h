@@ -21,6 +21,7 @@ public:
 
     /// Preview resolution the user selected (the app generates previews at this size).
     int previewSize() const { return previewSize_; }
+    void setPreviewSize(int size) { previewSize_ = (size == 256 || size == 512 || size == 1024 || size == 2048) ? size : 1024; }
 
 private:
     void uploadIfNeeded(ID3D11Device* device, ID3D11DeviceContext* context);

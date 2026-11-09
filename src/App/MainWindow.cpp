@@ -30,14 +30,39 @@ std::string toUtf8(const std::filesystem::path& p)
 
 } // namespace
 
-MainWindow::MainWindow(HWND hwnd, D3DContext& d3d)
+MainWindow::MainWindow(HWND hwnd, D3DContext& d3d, const AppSettings& saved)
     : hwnd_(hwnd), d3d_(d3d), registry_(md::MaterialRegistry::builtin())
 {
     for (const auto& m : registry_.all()) {
-        settings_[std::string(m->id())] = md::defaultSettings(*m);
+        const std::string id(m->id());
+        settings_[id] = md::defaultSettings(*m);
+        if (auto it = saved.materials.find(id); it != saved.materials.end()) {
+            try {
+                std::vector<std::string> ignored;
+                settings_[id] = md::settingsFromJson(*it, registry_, m.get(), ignored);
+            } catch (const std::exception&) {
+                // Outdated or invalid saved settings: keep the defaults.
+            }
+        }
     }
     if (!registry_.all().empty()) {
-        active_ = std::string(registry_.all().front()->id());
+        active_ = registry_.find(saved.activeMaterial) ? saved.activeMaterial : std::string(registry_.all().front()->id());
+        selectTab_ = active_;
+    }
+    exportDir_ = saved.exportDir;
+    presetDir_ = saved.presetDir;
+    preview_.setPreviewSize(saved.previewSize);
+}
+
+void MainWindow::saveTo(AppSettings& s) const
+{
+    s.exportDir = exportDir_;
+    s.presetDir = presetDir_;
+    s.previewSize = preview_.previewSize();
+    s.activeMaterial = active_;
+    s.materials = nlohmann::json::object();
+    for (const auto& [id, settings] : settings_) {
+        s.materials[id] = md::settingsToJson(settings);
     }
 }
 

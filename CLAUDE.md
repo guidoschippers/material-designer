@@ -128,6 +128,8 @@ Exit codes: 0 ok, 1 generic error, 2 invalid arguments, 3 unknown material, 4 in
 - `PreviewPanel`: map selector, 2x2 tiling, zoom (wheel) and pan (drag). Uses the exporter's
   encoders, so the preview matches the PNGs.
 - `GenerationWorker`: background generation with cancellation (std::jthread + stop_token).
+- `AppSettings`: window placement, last folders, preview size, active tab and the last settings
+  per material, stored in `%APPDATA%\material-designer\gui-settings.json` (written on exit).
 
 ## Reference material
 

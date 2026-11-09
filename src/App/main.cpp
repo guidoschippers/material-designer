@@ -1,5 +1,6 @@
 // material-designer GUI entry point: Win32 window + Direct3D 11 + Dear ImGui main loop.
 
+#include "AppSettings.h"
 #include "D3DContext.h"
 #include "MainWindow.h"
 
@@ -22,6 +23,34 @@ namespace {
 D3DContext g_d3d;
 UINT g_resizeWidth = 0;
 UINT g_resizeHeight = 0;
+AppSettings g_settings; // remembered between sessions
+
+void captureWindowPlacement(HWND hwnd)
+{
+    WINDOWPLACEMENT wp{sizeof(wp)};
+    if (GetWindowPlacement(hwnd, &wp)) {
+        const RECT& r = wp.rcNormalPosition;
+        g_settings.window = WindowPlacement{r.left, r.top, r.right - r.left, r.bottom - r.top, wp.showCmd == SW_SHOWMAXIMIZED};
+    }
+}
+
+/// Restores the saved window rectangle if it is still (mostly) on a monitor.
+bool restoreWindowPlacement(HWND hwnd)
+{
+    if (!g_settings.window) {
+        return false;
+    }
+    const WindowPlacement& s = *g_settings.window;
+    RECT r{s.x, s.y, s.x + s.width, s.y + s.height};
+    if (!MonitorFromRect(&r, MONITOR_DEFAULTTONULL)) {
+        return false;
+    }
+    WINDOWPLACEMENT wp{sizeof(wp)};
+    wp.rcNormalPosition = r;
+    wp.showCmd = s.maximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
+    SetWindowPlacement(hwnd, &wp);
+    return true;
+}
 
 LRESULT WINAPI wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -40,6 +69,9 @@ LRESULT WINAPI wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return 0; // Disable the ALT application menu.
         }
         break;
+    case WM_CLOSE:
+        captureWindowPlacement(hwnd);
+        break; // DefWindowProc destroys the window
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -84,7 +116,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand)
     HWND hwnd = CreateWindowW(wc.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
                               1600, 1000, nullptr, nullptr, instance, nullptr);
 
-    {
+    g_settings = AppSettings::load();
+    const bool restored = restoreWindowPlacement(hwnd);
+    if (!restored) {
         // Initial size: 1400 x 900 logical pixels, scaled for the monitor DPI and clamped to the work area.
         const float scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
         MONITORINFO mi{sizeof(mi)};
@@ -100,7 +134,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand)
         MessageBoxW(nullptr, L"Could not create a Direct3D 11 device.", title.c_str(), MB_ICONERROR);
         return 1;
     }
-    ShowWindow(hwnd, showCommand);
+    if (!restored) {
+        ShowWindow(hwnd, showCommand);
+    }
     UpdateWindow(hwnd);
 
     IMGUI_CHECKVERSION();
@@ -111,7 +147,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand)
     ImGui_ImplDX11_Init(g_d3d.device(), g_d3d.context());
 
     {
-        MainWindow window(hwnd, g_d3d);
+        MainWindow window(hwnd, g_d3d, g_settings);
         bool running = true;
         while (running) {
             MSG msg;
@@ -142,6 +178,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand)
             g_d3d.present(true);
         }
         window.shutdown();
+        window.saveTo(g_settings);
+        g_settings.save();
     }
 
     ImGui_ImplDX11_Shutdown();
