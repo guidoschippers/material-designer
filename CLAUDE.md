@@ -7,28 +7,86 @@ All code, comments, UI text, docs and commit messages are in **English**.
 
 Visual Studio 2026 (MSVC v145), C++20, x64 only. Dependencies come from vcpkg in manifest
 mode (`vcpkg.json`); the MSBuild integration installs them automatically on first build
-into `vcpkg_installed/` (triplet `x64-windows-static-md`). The vcpkg bundled with Visual
-Studio is used unless `VCPKG_ROOT` is set.
+into `vcpkg_installed/` (triplet `x64-windows-static-md`: static libs, dynamic CRT). The vcpkg
+bundled with Visual Studio is used unless `VCPKG_ROOT` is set.
 
 ```powershell
 # Release / Debug builds (from the repository root)
 & "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" material-designer.slnx /m /p:Configuration=Release /p:Platform=x64
 & "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" material-designer.slnx /m /p:Configuration=Debug /p:Platform=x64
 
+# Run the tests
+bin\x64\Release\material-designer-tests.exe
+
 # Or the wrapper script (locates MSBuild with vswhere); -Test also runs the tests
 ./build.ps1 -Configuration Release -Test
 ```
 
 Binaries end up in `bin/x64/<Configuration>/`:
-`material-designer.exe`, `material-designer-cli.exe`, `material-designer-tests.exe`.
+`material-designer.exe` (GUI), `material-designer-cli.exe`, `material-designer-tests.exe`.
 
-## Architecture
+Warnings are errors (`/W4 /WX`). Floating point model is `/fp:precise` on purpose: output must
+be byte-identical between runs, the GUI and the CLI.
 
-| Project | Type | Purpose |
-|---------|------|---------|
+## Repository layout
+
+| Path | Type | Purpose |
+|------|------|---------|
 | `src/Core` | static lib | All generation logic. No UI dependencies. |
 | `src/App`  | Windows exe | GUI (Dear ImGui, DirectX 11, Win32). |
 | `src/Cli`  | console exe | CLI for scripting / Claude. |
-| `tests`    | console exe | Catch2 tests. |
+| `tests`    | console exe | Catch2 tests (unit tests + CLI smoke tests). |
+| `build/Common.props` | | Compiler/linker settings shared by all projects. |
 
-_To be completed in milestone 2._
+The `.vcxproj` files use wildcards (`src\**\*.cpp`), so new source files are picked up
+without editing project files.
+
+## Core architecture (`src/Core`)
+
+Public headers live in `src/Core/include/md/...`, sources in `src/Core/src/...`.
+
+- `md/core/Parameter.h`: `ParamSchema` / `ParamDef` (key, label, group, tooltip, type
+  bool/int/float/enum/color, default, min/max, enum options, `wearOnly`, `enabledBy`),
+  `ParamValue`, parsing (`parseParamValue`) and `ParamReader` (typed access with defaults).
+- `md/core/Settings.h`: `CommonSettings` (size, seed, seamless, wear, wear amount, apply wear,
+  map selection, normal convention/strength), `MapType`, `MaterialSettings`.
+- `md/core/Material.h`: the `Material` interface. A material implements `id()`,
+  `displayName()`, `description()`, `schema()`, `reliefDepth()` and `generateSurface()`
+  (albedo, height, roughness, wear mask, extra occlusion). The non-virtual
+  `Material::generate(settings)` runs the shared pipeline: surface -> normal map and AO derived
+  from height -> `MaterialMaps`.
+- `md/core/Registry.h`: `MaterialRegistry::builtin()`; registration happens in
+  `src/Core/src/materials/BuiltinMaterials.cpp`.
+- `md/core/Parallel.h`: `parallelFor` (all cores, deterministic, cancellable via `std::stop_token`).
+- `md/noise/Noise.h`: tileable hash, value, Perlin, fBm, ridged, Voronoi (F1/F2 and exact
+  border distance) and domain warping. All take a `Period`; see the header comment.
+- `md/image/Filters.h`: wrap-aware blur, normal-from-height and AO-from-height.
+- `md/io/Preset.h`: JSON presets (`settingsToJson`, `loadPreset`, ...), settings
+  normalisation, `describeMaterial` (schema as JSON).
+- `md/io/Export.h` / `ImageIO.h`: map encoding (albedo sRGB 8-bit, data maps linear, height
+  16-bit) and PNG writing. 16-bit PNGs use a small built-in encoder on top of stb's zlib
+  (stb_image_write only writes 8-bit PNG).
+
+### Generation rules (keep these when writing materials)
+
+- Work in UV space `[0, 1)`; never in pixels. Feature sizes are fractions of the texture so the
+  low-resolution GUI preview looks like the full-resolution export.
+- Every pixel must be a pure function of `(u, v, settings)`: use the hash-based noise, never a
+  stateful RNG. Use `ctx.forEachPixel` for per-pixel work (parallel, cancellable).
+- Seamless: sample noise at `u * f` with `noise::periodFor(f, f, ctx.seamless())` and an
+  integer frequency `f` (`noise::frequency()`); periodic Voronoi cell ids are stable across the
+  wrap. For distances across the tile edge use `periodicDelta`.
+- Albedo is written in **linear** RGB; colour parameters are sRGB (`srgbToLinear`).
+- Wear: always write the wear mask (`out.wear`) when `ctx.wearEnabled()`; only modify the base
+  maps when `ctx.applyWear()`.
+
+## Adding a material
+
+1. Create `src/Core/src/materials/<Name>.h/.cpp` with a class deriving from `md::Material`.
+   Declare its parameters in the constructor (`schema_.addFloat(...).inGroup(...).tip(...)`;
+   mark wear parameters with `.wear()`).
+2. Add one `#include` and one `registry.add(std::make_unique<...>());` line in
+   `src/Core/src/materials/BuiltinMaterials.cpp`.
+
+That's all: the GUI tab, CLI options, presets and `describe` output are generated from the schema,
+and the tests automatically cover every registered material.
