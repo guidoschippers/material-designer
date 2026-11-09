@@ -8,7 +8,10 @@
 
 #include "materials/Asphalt.h"
 #include "materials/AsphaltEdge.h"
+#include "materials/Concrete.h"
+#include "materials/Grass.h"
 #include "materials/RoadMarking.h"
+#include "materials/Wood.h"
 
 namespace md {
 
@@ -16,6 +19,9 @@ void registerBuiltinMaterials(MaterialRegistry& registry)
 {
     // Base materials
     registry.add(std::make_unique<AsphaltMaterial>());
+    registry.add(std::make_unique<ConcreteMaterial>());
+    registry.add(std::make_unique<WoodMaterial>());
+    registry.add(std::make_unique<GrassMaterial>());
 
     // Overlays
     registry.add(std::make_unique<AsphaltEdgeMaterial>());

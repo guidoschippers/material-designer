@@ -47,7 +47,7 @@ bool sameImage(const ImageF& a, const ImageF& b)
 /// another column pair, so its mean step must lie within the interior distribution.
 struct SeamStats {
     double seam = 0.0;     ///< mean |difference| across the seam
-    double typical = 0.0;  ///< 98th percentile of the mean |difference| of interior column pairs
+    double typical = 0.0;  ///< largest mean |difference| of any interior column pair
 };
 
 SeamStats seamStats(const ImageF& img, bool horizontal)
@@ -71,13 +71,13 @@ SeamStats seamStats(const ImageF& img, bool horizontal)
     std::sort(pairs.begin(), pairs.end());
     SeamStats s;
     s.seam = pairMean(n - 1, 0);
-    s.typical = pairs[static_cast<std::size_t>(0.98 * static_cast<double>(pairs.size() - 1))];
+    s.typical = pairs.back(); // structures (joints, grooves) may legitimately sit on the seam
     return s;
 }
 
 bool isSeamless(const SeamStats& s)
 {
-    return s.seam <= s.typical * 1.25 + 1e-4;
+    return s.seam <= s.typical * 1.05 + 1e-4;
 }
 
 } // namespace
