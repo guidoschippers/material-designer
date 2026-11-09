@@ -70,3 +70,20 @@ the outside of an old brown corrugated shipping box, single-wall board with a kr
   rings, greyish dust collecting in low areas, faint yellowed tape residue with torn paper.
   Example for an old, worn moving box: `--seed 1998 --wear 0.8 --set scuffs=0.6 --set creases=0.6
   --set dents=0.4 --set water_stains=0.5 --set dirt=0.6 --set tape_residue=0.3`.
+
+## Plastic
+
+For the late-90s electronics in the attic (a PS1-style console, a VCR, a game controller); no
+photo, described by the owner.
+
+- Moulded ABS / polystyrene in one uniform colour: light warm grey for the console, near-black for
+  the VCR, dark grey for the controller.
+- Housings mostly have the fine spark-eroded (EDM) matte texture of the mould: densely overlapping
+  shallow craters, visible in the normal map and as a matte roughness (`texture`, `texture_scale`,
+  `texture_depth`, `roughness_min` / `roughness_max`). Glossy parts use `texture` 0.
+- Optional moulding defects: faint wavy flow lines (gloss bands) and soft sink marks.
+- Wear: fine scratches and scuffed patches (stress-whitened, lighter on dark plastic), areas polished
+  glossy by hands, a light grey dust film, dark grime in the texture, UV yellowing of light plastic
+  (`yellowing`, `yellowing_tint`) and small dings with a whitened rim.
+  Examples: grey console `--set yellowing=0.5 --wear 0.6`; black VCR `--set color=#1c1c1e --set dust=0.8
+  --wear 0.7`; controller `--set color=#3c3d40 --set hand_polish=0.8 --wear 0.8`.
