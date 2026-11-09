@@ -21,6 +21,7 @@ Two front-ends share one generation core:
 | `grass` | base | layered blades, clumps, dry blades, clover, flowers, fallen leaves; wear: trampled path, dry patches, bare soil |
 | `cardboard` | base | brown corrugated box: kraft liner with fibres, shives and recycled specks, flutes faintly showing as ridges along V; wear: scuffs, creases, dents, water stains with tide marks, dust, tape residue |
 | `plastic` | base | moulded ABS of 90s electronics (grey console, black VCR, controller): glossy to spark-eroded (EDM) texture, flow lines, sink marks; wear: scratches & scuffs, hand polish, dust, grime, UV yellowing, dings |
+| `crt_glass` | base | front glass of a 90s CRT TV: dark grey-green smooth glass, anti-glare coating, optional shadow mask or aperture grille; wear: dust, fingerprints & smudges, wipe streaks |
 | `asphalt_edge` | overlay | crumbling, binder-rich asphalt along a kerb (tiles vertically, with opacity map) |
 | `road_marking` | overlay | painted dash or continuous line that follows the surface texture and wears |
 

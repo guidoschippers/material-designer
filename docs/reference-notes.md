@@ -87,3 +87,20 @@ photo, described by the owner.
   (`yellowing`, `yellowing_tint`) and small dings with a whitened rim.
   Examples: grey console `--set yellowing=0.5 --wear 0.6`; black VCR `--set color=#1c1c1e --set dust=0.8
   --wear 0.7`; controller `--set color=#3c3d40 --set hand_polish=0.8 --wear 0.8`.
+
+## CRT glass
+
+For the old TV in the attic; no photo, described by the owner. The glass layer of the screen, seen
+switched off or over a picture that comes from elsewhere.
+
+- Near-black, slightly grey-green, very smooth glass: the roughness and normal maps matter most, the
+  albedo is dark. An optional anti-glare coating makes it matte with a fine micro-texture.
+- Optionally a faint phosphor pattern behind the glass: a delta shadow mask (RGB dots, most TVs) or an
+  aperture grille (RGB stripes, Trinitron), with `mask_pitch` as the distance between phosphors of the
+  same colour. Below about two pixels per phosphor the pattern fades out instead of aliasing.
+- Wear: a light dust film with specks (the film keeps a blurred reflection, specks are fully matte),
+  greasy fingerprints with whorl and loop ridges and smeared smudges (roughness blotches), fine
+  circular wipe streaks from a cloth.
+- No opacity map: base materials are opaque in this tool. For a transparent glass layer over a
+  picture, use a constant alpha in the shader (or the wear mask, which marks the dust and grease).
+  Example: `--wear 0.8 --set dust=0.6 --set fingerprints=0.45 --set wipe_streaks=0.3`.
