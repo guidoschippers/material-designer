@@ -15,7 +15,7 @@ public:
         schema_.addInt("octaves", "Octaves", 3, 1, 8).inGroup("Shape").tip("Number of octaves.");
         schema_.addBool("invert", "Invert", false).inGroup("Shape").tip("Inverts the height.");
         schema_.addEnum("palette", "Palette", {{"red", "Red"}, {"blue", "Blue"}}, "red").inGroup("Colour").tip("Colour palette.");
-        schema_.addColor("tint", "Tint", md::Color{0.5f, 0.25f, 1.0f}).inGroup("Colour").tip("Tint colour.");
+        schema_.addColor("tint", "Tint", md::Color{0.4f, 0.2f, 1.0f}).inGroup("Colour").tip("Tint colour.");
         schema_.addFloat("scratches", "Scratches", 0.5, 0.0, 1.0).inGroup("Wear").tip("Scratch amount.").wear();
     }
 

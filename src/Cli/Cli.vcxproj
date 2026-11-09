@@ -39,6 +39,8 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
+      <!-- The vcpkg CLI11 port is built in precompiled mode. -->
+      <AdditionalDependencies>CLI11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

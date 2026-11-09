@@ -47,6 +47,12 @@ std::string_view paramTypeName(ParamType type)
     return "unknown";
 }
 
+Color quantizeColor(Color c)
+{
+    auto q = [](float v) { return static_cast<float>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)) / 255.0f; };
+    return Color{q(c.r), q(c.g), q(c.b)};
+}
+
 std::string colorToHex(Color c)
 {
     auto to8 = [](float v) { return static_cast<int>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)); };
@@ -80,7 +86,7 @@ ParamValue ParamDef::defaultParamValue() const
     case ParamType::Int: return static_cast<int>(defaultValue);
     case ParamType::Float: return defaultValue;
     case ParamType::Enum: return defaultOption;
-    case ParamType::Color: return defaultColor;
+    case ParamType::Color: return quantizeColor(defaultColor);
     }
     return defaultValue;
 }
@@ -262,7 +268,7 @@ bool sanitizeValue(const ParamDef& def, ParamValue& value, std::vector<std::stri
     case ParamType::Color: {
         if (!std::holds_alternative<Color>(value)) return false;
         Color& c = std::get<Color>(value);
-        c = Color{std::clamp(c.r, 0.0f, 1.0f), std::clamp(c.g, 0.0f, 1.0f), std::clamp(c.b, 0.0f, 1.0f)};
+        c = quantizeColor(c);
         return true;
     }
     }

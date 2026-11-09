@@ -80,6 +80,47 @@ Public headers live in `src/Core/include/md/...`, sources in `src/Core/src/...`.
 - Wear: always write the wear mask (`out.wear`) when `ctx.wearEnabled()`; only modify the base
   maps when `ctx.applyWear()`.
 
+## CLI usage (`material-designer-cli.exe`)
+
+The CLI is the scriptable interface; use it to discover options and generate textures without
+reading code. `list` and `describe` always print JSON.
+
+```powershell
+material-designer-cli list                       # materials as JSON
+material-designer-cli describe asphalt           # full parameter schema as JSON
+material-designer-cli generate asphalt --out out --seed 1234 --size 2048 --json
+material-designer-cli generate asphalt --out out --set aggregate_size=0.7 --set cracks=0.4 --wear 0.6
+material-designer-cli generate asphalt --out out --preset out/asphalt_1234_settings.json --maps albedo,normal
+```
+
+`generate` options: `--out <dir>` (required), `--preset <file.json>`, `--set key=value`
+(repeatable; bool `true/false`, numbers, enum option ids, colours `#rrggbb`), `--seed N`,
+`--size N` (power of two 64..8192), `--seamless` / `--no-seamless`, `--wear <0..1>` / `--no-wear`,
+`--wear-mask-only`, `--maps albedo,normal,roughness,height,ao,wear|all`,
+`--normal directx|opengl`, `--normal-strength <0..4>`, `--json`.
+Precedence: defaults < preset < `--set` < explicit flags.
+
+Output: `<material>_<seed>_<map>.png` plus `<material>_<seed>_settings.json` (a preset that
+reproduces the run exactly). Albedo is 8-bit sRGB, normal/roughness/AO/wear 8-bit linear, height
+16-bit linear. With `--json` the result (files, formats, timings, warnings) is printed on stdout.
+
+Exit codes: 0 ok, 1 generic error, 2 invalid arguments, 3 unknown material, 4 invalid preset,
+5 I/O error. Errors go to stderr (as `{"ok": false, "error": {...}}` with `--json`).
+
+## GUI (`src/App`)
+
+- `MainWindow`: one tab per registered material, actions (seed, reset, presets, export), debounced
+  preview regeneration (256 px while dragging, then the selected preview size).
+- `SettingsPanel`: controls generated from the schema; wear-only parameters are disabled while
+  wear is off; right-click resets a value.
+- `PreviewPanel`: map selector, 2x2 tiling, zoom (wheel) and pan (drag). Uses the exporter's
+  encoders, so the preview matches the PNGs.
+- `GenerationWorker`: background generation with cancellation (std::jthread + stop_token).
+
+## Reference material
+
+`docs/reference-notes.md` describes the look the owner wants for each material (from photos).
+
 ## Adding a material
 
 1. Create `src/Core/src/materials/<Name>.h/.cpp` with a class deriving from `md::Material`.

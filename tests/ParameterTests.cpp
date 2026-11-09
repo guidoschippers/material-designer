@@ -70,6 +70,6 @@ TEST_CASE("ParamReader falls back to defaults")
     REQUIRE(r.getInt("octaves") == 3);
     REQUIRE(r.getEnum("palette") == "blue");
     REQUIRE(r.getEnumIndex("palette") == 1);
-    REQUIRE(r.getColor("tint") == Color{0.5f, 0.25f, 1.0f});
+    REQUIRE(r.getColor("tint") == Color{0.4f, 0.2f, 1.0f});
     REQUIRE_THROWS(r.getInt("scale"));
 }

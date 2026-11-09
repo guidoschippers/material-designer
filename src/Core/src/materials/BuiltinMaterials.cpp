@@ -6,11 +6,13 @@
 
 #include "md/core/Registry.h"
 
+#include "materials/Asphalt.h"
+
 namespace md {
 
 void registerBuiltinMaterials(MaterialRegistry& registry)
 {
-    (void)registry;
+    registry.add(std::make_unique<AsphaltMaterial>());
 }
 
 } // namespace md

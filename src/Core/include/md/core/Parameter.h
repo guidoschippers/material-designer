@@ -22,6 +22,10 @@ struct Color {
     bool operator==(const Color&) const = default;
 };
 
+/// Rounds each component to 8 bits. Colour parameters are always quantised like this so that
+/// they round-trip exactly through "#rrggbb" presets.
+Color quantizeColor(Color c);
+
 /// Formats a colour as "#rrggbb".
 std::string colorToHex(Color c);
 /// Parses "#rrggbb" or "rrggbb". Returns nullopt on malformed input.
