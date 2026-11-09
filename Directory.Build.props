@@ -1,0 +1,34 @@
+<Project>
+  <!--
+    Shared build settings for every project in the repository.
+    Imported automatically by MSBuild before each project's own content.
+  -->
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+    <PlatformToolset>v145</PlatformToolset>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <CharacterSet>Unicode</CharacterSet>
+
+    <!-- Keep all binaries side by side so the tests can find the CLI executable. -->
+    <OutDir>$(RepoRoot)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(RepoRoot)obj\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</IntDir>
+  </PropertyGroup>
+
+  <!--
+    vcpkg in manifest mode. Uses $(VCPKG_ROOT) when set, otherwise the copy bundled with Visual Studio.
+    Dependencies are linked statically against the dynamic CRT (triplet x64-windows-static-md),
+    so the executables have no third-party DLL dependencies.
+  -->
+  <PropertyGroup>
+    <VcpkgRoot Condition="'$(VcpkgRoot)' == '' and '$(VCPKG_ROOT)' != ''">$(VCPKG_ROOT)</VcpkgRoot>
+    <VcpkgRoot Condition="'$(VcpkgRoot)' == ''">$(VsInstallRoot)\VC\vcpkg</VcpkgRoot>
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgManifestRoot>$(RepoRoot)</VcpkgManifestRoot>
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+    <VcpkgUseMD>true</VcpkgUseMD>
+    <VcpkgAutoLink>false</VcpkgAutoLink>
+  </PropertyGroup>
+
+  <Import Condition="'$(VcpkgPropsImported)' != 'true' and Exists('$(VcpkgRoot)\scripts\buildsystems\msbuild\vcpkg.props')"
+          Project="$(VcpkgRoot)\scripts\buildsystems\msbuild\vcpkg.props" />
+</Project>

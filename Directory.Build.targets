@@ -1,0 +1,10 @@
+<Project>
+  <!-- vcpkg MSBuild integration (installs the manifest dependencies and adds include/lib paths). -->
+  <Import Condition="Exists('$(VcpkgRoot)\scripts\buildsystems\msbuild\vcpkg.targets')"
+          Project="$(VcpkgRoot)\scripts\buildsystems\msbuild\vcpkg.targets" />
+
+  <Target Name="MdCheckVcpkg" BeforeTargets="PrepareForBuild"
+          Condition="!Exists('$(VcpkgRoot)\scripts\buildsystems\msbuild\vcpkg.targets')">
+    <Error Text="vcpkg not found at '$(VcpkgRoot)'. Install the 'vcpkg package manager' component in Visual Studio or set VCPKG_ROOT." />
+  </Target>
+</Project>

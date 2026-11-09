@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "material-designer",
+  "version": "0.1.0",
+  "description": "Procedural PBR texture generator (GUI + CLI).",
+  "license": "MIT",
+  "builtin-baseline": "ec48c11eae9448c8c6e7739d93e06fa2433aa95f",
+  "dependencies": [
+    {
+      "name": "imgui",
+      "features": [ "dx11-binding", "win32-binding" ]
+    },
+    "stb",
+    "nlohmann-json",
+    "cli11",
+    "catch2"
+  ]
+}

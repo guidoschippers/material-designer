@@ -1,0 +1,23 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/Core/Core.vcxproj" Id="4addadf7-11a7-4ec5-b426-0fef0568487f" />
+    <Project Path="src/App/App.vcxproj" Id="71e80f38-fdc3-4d29-8bf3-a523eb21f84c" />
+    <Project Path="src/Cli/Cli.vcxproj" Id="7828bc53-a907-48b0-b1a1-edda5cb01908" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Tests.vcxproj" Id="ae66eaf9-ef50-4309-a6da-ab3aeaad81e6" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="vcpkg.json" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="build/Common.props" />
+    <File Path="README.md" />
+    <File Path="CLAUDE.md" />
+  </Folder>
+</Solution>

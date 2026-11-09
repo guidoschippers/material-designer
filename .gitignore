@@ -1,0 +1,43 @@
+# Build output
+/bin/
+/obj/
+x64/
+Debug/
+Release/
+*.obj
+*.pch
+*.pdb
+*.ilk
+*.idb
+*.ipdb
+*.iobj
+*.tlog
+*.lastbuildstate
+*.log
+*.exp
+*.lib
+
+# vcpkg (manifest mode)
+/vcpkg_installed/
+/vcpkg/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+*.aps
+*.ncb
+ipch/
+enc_temp_folder/
+CMakeSettings.json
+out/
+
+# Runtime files created by the GUI next to the executable
+imgui.ini
+
+# Local generated textures
+/output/
