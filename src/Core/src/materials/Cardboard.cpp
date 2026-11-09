@@ -14,18 +14,14 @@ using noise::fbm;
 using noise::fbm01;
 using noise::randomFromId;
 
+// Layer values seed the noise of each feature: keep them stable so presets reproduce.
 enum Layer : std::uint32_t {
     kTone = 1, kHue, kFormation, kSurface, kFibres, kFibresFine, kSpecks, kFluteWarp, kFluteVis,
     kScuff, kScuffStreak, kFuzz, kCreases, kCreaseWobble, kDents, kStains, kCockle, kDirt,
-    kTape, kTapeEdge, kTapeResidue, kTapeTear,
+    kTape, kTapeResidue = kTape + 2, kTapeTear,
 };
 
-/// Unwrapped cell index -> stable cell id (wraps on seamless axes).
-std::uint32_t cellId(int gx, int gy, int cells, std::uint32_t seed, const Domain& d)
-{
-    return noise::hashCell(noise::wrapIndex(gx, d.seamlessU ? cells : 0), noise::wrapIndex(gy, d.seamlessV ? cells : 0),
-                           seed);
-}
+using features::cellId;
 
 /// Short straight paper fibres, `density` (0..2) per cell on a grid of `freq` cells per tile
 /// edge, mostly lying along u (the machine direction of the liner). Returns a signed tone in
@@ -39,9 +35,12 @@ float fibres(float u, float v, int freq, std::uint32_t seed, float density, cons
     const float wEff = std::max(halfWidth, 0.5f * d.pixel);
     const float strength = halfWidth / wEff;
     const float reach = 1.4f * cell + wEff + d.pixel;
+    // A fibre centred n cells away is at least (n - 1) cells from the pixel, so visit every cell
+    // with (n - 1) * cell < reach. That is 2 at full resolution; more when pixels are coarse.
+    const int n = 1 + static_cast<int>(reach / cell);
     float tone = 0.0f;
-    for (int dy = -2; dy <= 2; ++dy) {
-        for (int dx = -2; dx <= 2; ++dx) {
+    for (int dy = -n; dy <= n; ++dy) {
+        for (int dx = -n; dx <= n; ++dx) {
             const int gx = cx + dx, gy = cy + dy;
             const std::uint32_t id = cellId(gx, gy, freq, seed, d);
             for (std::uint32_t k = 0; k < 2; ++k) {
@@ -152,8 +151,9 @@ StainSample waterStains(float u, float v, int cells, std::uint32_t seed, float p
         // Sharp outer edge, softer towards the inside.
         return (1.0f - smoothstep(0.0f, ringWidth, distUv)) * smoothstep(-3.5f * ringWidth, 0.0f, distUv);
     };
-    for (int dy = -1; dy <= 1; ++dy) {
-        for (int dx = -1; dx <= 1; ++dx) {
+    // Stretched, lobed stains can reach a little beyond one cell from their centre: search 5x5.
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
             const int gx = cx + dx, gy = cy + dy;
             const std::uint32_t id = cellId(gx, gy, cells, seed, d);
             if (randomFromId(id, 0) >= probability) {

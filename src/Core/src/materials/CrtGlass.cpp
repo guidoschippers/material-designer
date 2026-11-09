@@ -14,9 +14,9 @@ using noise::fbm;
 using noise::fbm01;
 using noise::randomFromId;
 
+// Layer values seed the noise of each feature: keep them stable so presets reproduce.
 enum Layer : std::uint32_t {
-    kTint = 1, kCoating, kDust, kDustSpecks, kPrints, kPrintWarp, kPrintPatch, kSmudges, kSmudgeStreaks,
-    kWipes, kWipeMask,
+    kTint = 1, kCoating, kDust, kDustSpecks, kPrints, kSmudges = kPrints + 3, kSmudgeStreaks, kWipes, kWipeMask,
 };
 
 /// Albedo factor of one phosphor colour (0 = red, 1 = green, 2 = blue). Averages to about 1.
@@ -87,8 +87,7 @@ float fingerprints(float u, float v, int cells, std::uint32_t seed, float probab
     for (int dy = -1; dy <= 1; ++dy) {
         for (int dx = -1; dx <= 1; ++dx) {
             const int gx = cx + dx, gy = cy + dy;
-            const std::uint32_t id = noise::hashCell(noise::wrapIndex(gx, d.seamlessU ? cells : 0),
-                                                     noise::wrapIndex(gy, d.seamlessV ? cells : 0), seed);
+            const std::uint32_t id = features::cellId(gx, gy, cells, seed, d);
             if (randomFromId(id, 0) >= probability) {
                 continue;
             }
@@ -131,8 +130,7 @@ float wipeStreaks(float u, float v, int cells, std::uint32_t seed, float probabi
     for (int dy = -1; dy <= 1; ++dy) {
         for (int dx = -1; dx <= 1; ++dx) {
             const int gx = cx + dx, gy = cy + dy;
-            const std::uint32_t id = noise::hashCell(noise::wrapIndex(gx, d.seamlessU ? cells : 0),
-                                                     noise::wrapIndex(gy, d.seamlessV ? cells : 0), seed);
+            const std::uint32_t id = features::cellId(gx, gy, cells, seed, d);
             if (randomFromId(id, 0) >= probability) {
                 continue;
             }
@@ -177,13 +175,17 @@ Params readParams(const GenerateContext& ctx)
     p.antiGlare = r.getFloat("anti_glare");
     p.maskVisibility = r.getFloat("mask_visibility");
     p.grille = r.getEnum("mask_type") == "aperture_grille";
-    // Pitch = distance between neighbouring phosphors of the same colour.
+    // Pitch = distance between neighbouring phosphors of the same colour. Columns are always a
+    // multiple of 3 (and delta-mask rows even) so the colour sequence tiles.
     const float pitch = r.getFloat("mask_pitch");
-    p.maskColumns = 3 * noise::frequency(1.0f / pitch);
-    // Delta mask: dot spacing a = pitch / sqrt(3), row height a * sqrt(3) / 2 = pitch / 2.
-    const float a = pitch / 1.7320508f;
-    p.maskColumns = p.grille ? p.maskColumns : 3 * noise::frequency(1.0f / (3.0f * a));
-    p.maskRows = 2 * noise::frequency(1.0f / pitch); // row height = pitch / 2
+    if (p.grille) {
+        p.maskColumns = 3 * noise::frequency(1.0f / pitch); // three stripes per pitch
+    } else {
+        // Delta mask: dot spacing a = pitch / sqrt(3), row height a * sqrt(3) / 2 = pitch / 2.
+        const float a = pitch / 1.7320508f;
+        p.maskColumns = 3 * noise::frequency(1.0f / (3.0f * a));
+        p.maskRows = 2 * noise::frequency(1.0f / pitch);
+    }
     const float w = ctx.wearAmount();
     p.dust = r.getFloat("dust") * w;
     p.prints = r.getFloat("fingerprints") * w;
@@ -305,7 +307,6 @@ void CrtGlassMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& 
             h += 0.06f * grease;
             rough = lerp(rough, std::max(rough, 0.24f), wipe);
             col = lerp(col, col * 1.12f, wipe);
-            // Dust: matte, lighter film.
             // Dust: a thin film still lets the glass reflect (blurred); specks are fully matte.
             col = lerp(col, dustColor, 0.3f * dust + 0.6f * specks);
             rough = lerp(rough, std::max(rough, 0.3f), dust);

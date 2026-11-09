@@ -93,14 +93,6 @@ float smoothSawtooth(float t)
     return (std::sin(a) - std::sin(2.0f * a) / 2.0f + std::sin(3.0f * a) / 3.0f) / 1.42f;
 }
 
-/// Distance from p to segment ab.
-float segmentDistance(Vec2 p, Vec2 a, Vec2 b)
-{
-    const Vec2 ab = b - a, ap = p - a;
-    const float t = saturate(dot(ap, ab) / std::max(dot(ab, ab), 1e-12f));
-    return length(ap - ab * t);
-}
-
 /// Thin random scratches (several per grid cell), returns intensity in [0, 1].
 float scratchField(float u, float v, float amount, std::uint32_t seed, const features::Domain& d)
 {
@@ -123,7 +115,7 @@ float scratchField(float u, float v, float amount, std::uint32_t seed, const fea
                 const float angle = randomFromId(id, 3) * kPi;
                 const float len = cs * (0.15f + 0.6f * randomFromId(id, 4));
                 const Vec2 dir{std::cos(angle) * len * 0.5f, std::sin(angle) * len * 0.5f};
-                const float dist = segmentDistance({u, v}, c - dir, c + dir);
+                const float dist = features::segmentDistance({u, v}, c - dir, c + dir);
                 const float width = 0.0004f + 0.0008f * randomFromId(id, 5);
                 const float s = (1.0f - smoothstep(width, width + d.aa(), dist)) * (0.4f + 0.6f * randomFromId(id, 6));
                 best = std::max(best, s);

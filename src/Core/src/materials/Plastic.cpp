@@ -14,17 +14,11 @@ using noise::fbm;
 using noise::fbm01;
 using noise::randomFromId;
 
+// Layer values seed the noise of each feature: keep them stable so presets reproduce.
 enum Layer : std::uint32_t {
-    kMottle = 1, kEdm, kEdmFine, kEdmGrain, kFlow, kFlowMask, kSink, kScratches, kScuff, kScuffLines, kPolish,
+    kMottle = 1, kEdm, kFlow = 5, kFlowMask, kSink, kScratches, kScuff, kScuffLines, kPolish,
     kDust, kDustSpecks, kGrime, kYellow, kDings,
 };
-
-float segmentDistance(Vec2 p, Vec2 a, Vec2 b)
-{
-    const Vec2 ap = p - a, ab = b - a;
-    const float t = saturate(dot(ap, ab) / std::max(dot(ab, ab), 1e-12f));
-    return length(ap - ab * t);
-}
 
 /// Thin random scratches, clustered where things were handled or slid over the surface: mostly
 /// short faint hairlines, a few longer and deeper ones. Returns intensity in [0, 1].
@@ -40,11 +34,11 @@ float scratchField(float u, float v, float amount, std::uint32_t seed, const Dom
     for (int dy = -1; dy <= 1; ++dy) {
         for (int dx = -1; dx <= 1; ++dx) {
             const int gx = cx + dx, gy = cy + dy;
-            const std::uint32_t cell = noise::hashCell(noise::wrapIndex(gx, d.seamlessU ? cells : 0),
-                                                       noise::wrapIndex(gy, d.seamlessV ? cells : 0), seed);
-            // Clustering: the scratch density varies smoothly between cells.
-            const float density = noise::fbm01(static_cast<float>(gx) * 0.5f, static_cast<float>(gy) * 0.5f,
-                                               d.period(cells / 2), seed ^ 0x85ebca6bU, 2);
+            const std::uint32_t cell = features::cellId(gx, gy, cells, seed, d);
+            // Clustering: the scratch density varies smoothly from cell to cell (value noise on a
+            // grid of half the resolution, periodic with the cells).
+            const float density = noise::value(static_cast<float>(gx) * 0.5f, static_cast<float>(gy) * 0.5f,
+                                               d.period(cells / 2), seed ^ 0x85ebca6bU);
             const float keep = amount * smoothstep(0.3f, 0.7f, density) * 1.6f;
             for (std::uint32_t k = 0; k < 4; ++k) {
                 const std::uint32_t id = noise::hash32(cell + k * 0x9e3779b9U);
@@ -57,7 +51,7 @@ float scratchField(float u, float v, float amount, std::uint32_t seed, const Dom
                 const float rl = randomFromId(id, 4);
                 const float len = cs * (0.08f + 0.85f * rl * rl);
                 const Vec2 dir{std::cos(angle) * len * 0.5f, std::sin(angle) * len * 0.5f};
-                const float dist = segmentDistance({u, v}, c - dir, c + dir);
+                const float dist = features::segmentDistance({u, v}, c - dir, c + dir);
                 const float width = std::max(0.00025f + 0.0004f * randomFromId(id, 5), 0.5f * d.pixel);
                 const float s = (1.0f - smoothstep(width, width + d.aa(), dist)) * (0.2f + 0.8f * rl * randomFromId(id, 6));
                 best = std::max(best, s);
@@ -77,8 +71,12 @@ float edmTexture(float u, float v, int freq, std::uint32_t seed, const Domain& d
         return bowl * (0.45f + 0.55f * randomFromId(c.id, 1));
     };
     const int f2 = freq * 2 + 1;
-    const float grain = noise::value(u * freq * 4.0f, v * freq * 4.0f, d.period(freq * 4), seed ^ 0x3c6ef372U);
-    return saturate(0.6f * craters(freq, seed) + 0.3f * craters(f2, seed ^ 0x9e3779b9U) + 0.1f * grain);
+    // Finest grain: faded to its mean once it gets smaller than a few pixels (it would alias).
+    const int f4 = freq * 4;
+    const float fineDetail = smoothstep(1.5f * d.pixel, 4.0f * d.pixel, 1.0f / static_cast<float>(f4));
+    const float grain = fineDetail > 0.0f ? noise::value(u * f4, v * f4, d.period(f4), seed ^ 0x3c6ef372U) : 0.5f;
+    return saturate(0.6f * craters(freq, seed) + 0.3f * craters(f2, seed ^ 0x9e3779b9U) +
+                    0.1f * lerp(0.5f, grain, fineDetail));
 }
 
 struct Params {
@@ -200,14 +198,13 @@ void PlasticMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& o
     ctx.forEachPixel([&](int x, int y, float u, float v) {
         const float mottle = fbm(u * 4.0f, v * 4.0f, d.period(4), layer(kMottle), 4);
         Vec3 col = p.color * (1.0f + 0.06f * p.colorVariation * mottle);
-        float h = 0.6f;
+        float h = 0.6f; // height without the crater relief (added at the end)
 
         // --- Spark-eroded texture ---
         float crater = 0.0f;
         if (p.texture > 0.0f) {
             crater = edmTexture(u, v, p.textureFreq, layer(kEdm), d);
         }
-        const float texRelief = p.texture * p.textureDepth * grainDetail;
         float rough = lerp(p.roughMin, p.roughMax, p.texture * (0.85f + 0.15f * crater)) + 0.02f * mottle;
 
         // --- Moulding defects ---
@@ -258,10 +255,14 @@ void PlasticMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& o
             yellow = p.yellowing * (0.75f + 0.35f * fbm(u * 3.0f, v * 3.0f, d.period(3), layer(kYellow), 3));
         }
 
-        // Relief: craters (flattened where polished by hands), dings and scratches.
-        const float flatten = 1.0f - 0.75f * aw * polish;
-        h -= 0.3f * texRelief * flatten * crater;
+        // Relief: dings and scratches, then the craters (flattened where polished by hands).
+        // The crater relief is faded out when the grain is too fine to show (grainDetail), but dust
+        // and grime must still find the crater floors, so `low` is based on the unfaded relief:
+        // otherwise the preview would lose the grime that the full-size export shows.
         h -= aw * (0.25f * ding + 0.04f * scratch + 0.01f * scuff);
+        const float craterDepth = 0.3f * p.texture * p.textureDepth * (1.0f - 0.75f * aw * polish) * crater;
+        const float low = saturate((0.6f - (h - craterDepth)) * 6.0f);
+        h -= craterDepth * grainDetail;
 
         if (aw > 0.0f) {
             // UV yellowing: tint towards the yellowed hue at the same lightness, slightly darker.
@@ -283,7 +284,6 @@ void PlasticMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& o
             rough = lerp(rough, 0.6f, ding);
         }
         // Low areas (crater floors, dings, scratches, sink marks) collect grime and dust.
-        const float low = saturate((0.6f - h) * 6.0f);
         if (aw > 0.0f) {
             col = lerp(col, grimeColor, 0.7f * grime * smoothstep(0.1f, 0.8f, low));
             col = lerp(col, dustColor, 0.55f * dust * (0.4f + 0.6f * low));
