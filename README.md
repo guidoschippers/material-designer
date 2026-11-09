@@ -17,7 +17,7 @@ Two front-ends share one generation core:
 |----|------|-----------|
 | `asphalt` | base | rounded multicoloured gravel, meandering cracks, repairs; wear: crumbling/alligator cracks, raveling, oil stains, tyre tracks |
 | `concrete` | base | broom finish or formwork boards, exposed aggregate, pores, saw-cut joints; wear: chips, water stains, dirt & moss, efflorescence |
-| `wood` | base | pine / oak / walnut, flat-sawn rings with cathedral figures, knots, (limed) pores, staggered planks; wear: scratches, dents, sun fading, worn varnish |
+| `wood` | base | pine / oak / walnut, flat-sawn irregular rings with cathedral figures, fibrous grain, knots, (limed) pores, stain, staggered planks; wear: scratches, dents, sun fading, worn varnish, weathering |
 | `grass` | base | layered blades, clumps, dry blades, clover, flowers, fallen leaves; wear: trampled path, dry patches, bare soil |
 | `asphalt_edge` | overlay | crumbling, binder-rich asphalt along a kerb (tiles vertically, with opacity map) |
 | `road_marking` | overlay | painted dash or continuous line that follows the surface texture and wears |

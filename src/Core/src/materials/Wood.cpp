@@ -15,6 +15,7 @@ using noise::randomFromId;
 
 enum Layer : std::uint32_t {
     kBoard = 1, kSegment, kWave, kFiber, kPores, kKnots, kGrainNoise, kScratches, kDents, kWorn, kFade,
+    kRingNoise, kRingTone, kStreaks, kDashes, kWeather,
 };
 
 /// Colours and character of a species (sRGB colours).
@@ -36,12 +37,14 @@ Species species(const std::string& id)
 struct Params {
     Species sp;
     Vec3 early, late, knotColor;
-    float colorVariation = 0, grainScale = 1, ringsPerUnit = 0, waviness = 0, contrast = 0, pores = 0, limed = 0;
+    Vec3 stainColor;
+    float colorVariation = 0, grainScale = 1, ringsPerUnit = 0, waviness = 0, irregular = 0, figure = 0;
+    float contrast = 0, fibrous = 0, pores = 0, limed = 0;
     float knots = 0, knotSize = 0;
     bool planks = true;
     int plankCount = 1, segmentCount = 1;
-    float gap = 0, plankVariation = 0, gloss = 0;
-    float scratches = 0, dents = 0, fading = 0, worn = 0;
+    float gap = 0, plankVariation = 0, gloss = 0, stain = 0;
+    float scratches = 0, dents = 0, fading = 0, worn = 0, weathering = 0;
 };
 
 Params readParams(const GenerateContext& ctx)
@@ -56,7 +59,10 @@ Params readParams(const GenerateContext& ctx)
     p.grainScale = lerp(0.5f, 2.0f, r.getFloat("grain_scale"));
     p.ringsPerUnit = lerp(40.0f, 200.0f, r.getFloat("ring_density")) / p.grainScale;
     p.waviness = r.getFloat("waviness");
+    p.irregular = r.getFloat("ring_irregularity");
+    p.figure = r.getFloat("figure");
     p.contrast = r.getFloat("ring_contrast");
+    p.fibrous = r.getFloat("fibrous");
     p.pores = r.getFloat("pores") * p.sp.pores;
     p.limed = r.getFloat("limed_pores");
     p.knots = r.getFloat("knots");
@@ -67,12 +73,24 @@ Params readParams(const GenerateContext& ctx)
     p.gap = r.getFloat("plank_gap");
     p.plankVariation = r.getFloat("plank_variation");
     p.gloss = r.getFloat("gloss");
+    p.stain = r.getFloat("stain");
+    const Color sc = r.getColor("stain_color");
+    p.stainColor = srgbToLinear(Vec3{sc.r, sc.g, sc.b});
     const float w = ctx.wearAmount();
     p.scratches = r.getFloat("scratches") * w;
     p.dents = r.getFloat("dents") * w;
     p.fading = r.getFloat("sun_fading") * w;
     p.worn = r.getFloat("worn_varnish") * w;
+    p.weathering = r.getFloat("weathering") * w;
     return p;
+}
+
+/// Smooth periodic sawtooth in [-1, 1] (three Fourier terms): a slow rise and a quick fall. Used as
+/// the cut depth along a board that must tile: mostly nested arches instead of closed rings.
+float smoothSawtooth(float t)
+{
+    const float a = kTwoPi * t;
+    return (std::sin(a) - std::sin(2.0f * a) / 2.0f + std::sin(3.0f * a) / 3.0f) / 1.42f;
 }
 
 /// Distance from p to segment ab.
@@ -136,9 +154,19 @@ WoodMaterial::WoodMaterial()
     s.addFloat("waviness", "Waviness", 0.35, 0.0, 1.0)
         .inGroup("Grain")
         .tip("How much the grain meanders.");
+    s.addFloat("ring_irregularity", "Ring irregularity", 0.5, 0.0, 1.0)
+        .inGroup("Grain")
+        .tip("Uneven ring widths and contrast, and organic distortion of the ring pattern.");
+    s.addFloat("figure", "Cathedral figure", 0.35, 0.0, 1.0)
+        .inGroup("Grain")
+        .enabledIf("planks")
+        .tip("Share of boards cut close to the log centre, which shows nested arches (cathedrals); the rest has near-straight grain.");
     s.addFloat("ring_contrast", "Ring contrast", 0.6, 0.0, 1.0)
         .inGroup("Grain")
         .tip("Contrast between light earlywood and dark latewood.");
+    s.addFloat("fibrous", "Fibrous streaks", 0.3, 0.0, 1.0)
+        .inGroup("Grain")
+        .tip("Coarse, open-grained look: ragged ring edges and dark latewood broken into short streaks.");
     s.addFloat("pores", "Pores", 0.5, 0.0, 1.0)
         .inGroup("Grain")
         .tip("Visibility of the open pores (strong in oak, weak in pine).");
@@ -176,6 +204,12 @@ WoodMaterial::WoodMaterial()
     s.addFloat("gloss", "Gloss", 0.4, 0.0, 1.0)
         .inGroup("Finish")
         .tip("Finish: 0 = raw/matte, 1 = high-gloss varnish.");
+    s.addFloat("stain", "Stain", 0.0, 0.0, 1.0)
+        .inGroup("Finish")
+        .tip("Strength of a coloured stain; it soaks in more where the grain is open (latewood, pores).");
+    s.addColor("stain_color", "Stain colour", Color{0.38f, 0.34f, 0.31f})
+        .inGroup("Finish")
+        .tip("Colour of the stain.");
 
     s.addFloat("scratches", "Scratches", 0.5, 0.0, 1.0)
         .inGroup("Wear")
@@ -193,6 +227,11 @@ WoodMaterial::WoodMaterial()
         .inGroup("Wear")
         .wear()
         .tip("Patches where the finish has worn off: duller and lighter.");
+    s.addFloat("weathering", "Weathering", 0.0, 0.0, 1.0)
+        .inGroup("Wear")
+        .wear()
+        .tip("Outdoor weathering: the finish (and stain) erodes in streaks along the grain, exposing lighter, "
+             "greying wood; the soft earlywood wears away so the grain stands out.");
 }
 
 void WoodMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& out) const
@@ -226,25 +265,44 @@ void WoodMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& out)
 
         // --- Annual rings ---
         float rings;
+        int ringPeriod; // ring index period (straight grain only), 0 = none
         if (p.planks) {
             // Flat-sawn board: distance to the (virtual) log axis. The cut depth changes slowly along
             // the board, which produces the cathedral arches.
             // Most boards are cut far from the log axis (near-straight grain); about a third close
             // to it, which shows cathedral arches.
-            const bool cathedral = randomFromId(boardId, 6) < 0.35f;
+            const bool cathedral = randomFromId(boardId, 6) < p.figure;
             const float side = randomFromId(boardId, 7) < 0.5f ? -1.0f : 1.0f;
             const float cx = cathedral ? 0.2f + 0.6f * randomFromId(boardId, 2) : 0.5f + side * (2.0f + 4.0f * randomFromId(boardId, 2));
             // The log axis is tilted relative to the board: the cut depth changes linearly along a
             // board (nested arches). With a single segment per tile a periodic variation keeps it seamless.
-            const float along = segs > 1 ? (ly - 0.5f) * (randomFromId(boardId, 4) < 0.5f ? -1.0f : 1.0f)
-                                         : 0.5f * std::sin(kTwoPi * (v + randomFromId(boardId, 4)));
-            const float depth = boardWidth * p.grainScale * (0.5f + 0.8f * randomFromId(boardId, 3) + 0.22f * along);
+            // Distance along the board (texture units) times the slope of the cut relative to the log axis.
+            const float segLength = 1.0f / static_cast<float>(segs);
+            const float along = segs > 1 ? (ly - 0.5f) * segLength * (randomFromId(boardId, 4) < 0.5f ? -1.0f : 1.0f)
+                                         : 0.13f * smoothSawtooth(v + randomFromId(boardId, 4));
+            const float slope = 0.06f * p.grainScale;
+            const float halfRange = slope * (segs > 1 ? 0.5f * segLength : 0.13f);
+            // The depth stays positive so the arches never turn into closed rings (bullseyes).
+            const float depth = (0.02f + 0.12f * randomFromId(boardId, 3)) * p.grainScale + halfRange * 1.1f + slope * along;
+            // Organic, low-frequency distortion of the growth rings (a real log is not a cylinder).
+            const float distort = p.irregular * 3.0f / p.ringsPerUnit *
+                                  fbm(lx * 1.5f + randomFromId(boardId, 8) * 50.0f, v * 1.0f, {0, d.seamlessV ? 1 : 0},
+                                      layer(kRingNoise), 3);
             const float X = (lx - cx) * boardWidth + wave + fineWave;
-            rings = std::sqrt(X * X + depth * depth) * p.ringsPerUnit;
+            const float D = depth + distort;
+            rings = std::sqrt(X * X + D * D) * p.ringsPerUnit;
+            // Uneven ring widths: a slow, monotonic-ish warp of the ring index.
+            rings += p.irregular * 1.2f * fbm(rings * 0.3f, randomFromId(boardId, 9) * 97.0f, {}, layer(kRingNoise) ^ 3u, 3);
+            ringPeriod = 0;
         } else {
             // Straight grain across the whole tile; integer ring count keeps it seamless.
-            const float count = static_cast<float>(noise::frequency(p.ringsPerUnit * 0.35f));
-            rings = (u + wave + fineWave) * count;
+            const int count = noise::frequency(p.ringsPerUnit * 0.35f);
+            const int irregularFreq = std::max(1, count / 3);
+            const float irregularShift = p.irregular * 1.2f / static_cast<float>(count) *
+                                         fbm(u * static_cast<float>(irregularFreq), 0.5f, {d.seamlessU ? irregularFreq : 0, 0},
+                                             layer(kRingNoise) ^ 3u, 3);
+            rings = (u + wave + fineWave + irregularShift) * static_cast<float>(count);
+            ringPeriod = d.seamlessU ? count : 0;
         }
 
         // --- Knots: rings bend around them, dark core ---
@@ -270,26 +328,67 @@ void WoodMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& out)
             }
         }
 
-        const float f = rings - std::floor(rings);
+        // Fibrous texture: anisotropic noise that frays the ring edges and breaks latewood into streaks.
+        const float streak = fbm(u * 200.0f, v * 12.0f, d.period(200, 12), layer(kStreaks), 3);
+        const float ringPos = rings + p.fibrous * 0.3f * streak;
+        const float ringIndex = std::floor(ringPos);
+        const float f = ringPos - ringIndex;
         // Latewood band: narrow and sharp for pine, broad and soft for oak/walnut.
         const float bandStart = lerp(0.45f, 0.72f, p.sp.ringSharp);
-        const float late = smoothstep(bandStart, lerp(0.85f, 0.9f, p.sp.ringSharp), f) * (1.0f - smoothstep(0.93f, 1.0f, f));
+        float late = smoothstep(bandStart, lerp(0.85f, 0.9f, p.sp.ringSharp), f) * (1.0f - smoothstep(0.93f, 1.0f, f));
+        // Rings differ in strength (good and bad growth years).
+        const int ri = noise::wrapIndex(static_cast<int>(ringIndex), ringPeriod);
+        const float ringStrength = 1.0f + p.irregular * 0.8f * (randomFromId(noise::hashCell(ri, 0, layer(kRingTone) ^ boardId), 0) - 0.5f);
+        const float dashes = noise::value(u * 300.0f, v * 14.0f, d.period(300, 14), layer(kDashes));
+        late *= ringStrength * lerp(1.0f, 0.25f + 0.75f * smoothstep(0.3f, 0.6f, dashes), p.fibrous);
 
         // --- Colour ---
         const float fiber = noise::value(u * 700.0f, v * 18.0f, d.period(700, 18), layer(kFiber));
+        const float fiberAmp = 0.12f + 0.25f * p.fibrous;
         const float tone = (1.0f + (randomFromId(boardId, 5) - 0.5f) * 0.35f * p.plankVariation) *
                            (1.0f + (fbm01(u * 5.0f, v * 2.0f, d.period(5, 2), layer(kGrainNoise) ^ 7u, 3) - 0.5f) * 0.3f * p.colorVariation);
-        Vec3 col = lerp(p.early, p.late, late * p.contrast) * tone * (0.94f + 0.12f * fiber);
+        Vec3 col = lerp(p.early, p.late, saturate(late * p.contrast)) * tone * (1.0f - 0.5f * fiberAmp + fiberAmp * fiber);
         col = lerp(col, p.knotColor, knotCore);
 
         // Open pores: short dashes along the grain.
         const float poreNoise = noise::value(u * 520.0f, v * 45.0f, d.period(520, 45), layer(kPores));
-        const float pore = p.pores * smoothstep(0.72f, 0.85f, poreNoise) * (0.4f + 0.6f * late);
+        const float pore = p.pores * smoothstep(0.72f, 0.85f, poreNoise) * (0.4f + 0.6f * saturate(late));
         const Vec3 poreCol = lerp(col * 0.55f, srgbToLinear(Vec3{0.86f, 0.83f, 0.76f}), p.limed);
         col = lerp(col, poreCol, pore);
 
-        float h = 0.5f + 0.06f * late * p.sp.ringSharp + 0.02f * fiber - 0.12f * pore + 0.03f * knotCore;
+        float h = 0.5f + 0.06f * late * p.sp.ringSharp + (0.02f + 0.04f * p.fibrous) * fiber - 0.12f * pore + 0.03f * knotCore;
         float rough = lerp(0.8f, 0.22f, p.gloss) + 0.15f * pore + 0.05f * fiber;
+
+        // --- Stain: soaks in more where the grain is open ---
+        const Vec3 bare = col;
+        if (p.stain > 0.0f) {
+            const float absorb = saturate(0.8f + 0.2f * late + 0.4f * pore + 0.3f * p.fibrous * (fiber - 0.5f));
+            // The stain keeps the grain visible: darker in latewood, lighter in earlywood.
+            const Vec3 stained = p.stainColor * (0.55f + 0.9f * luminance(col) / std::max(luminance(p.early), 1e-4f)) *
+                                 (1.0f - 0.4f * p.contrast * saturate(late));
+            col = lerp(col, stained, p.stain * absorb);
+        }
+
+        // --- Weathering: the finish erodes in streaks along the grain, the wood greys ---
+        float exposed = 0.0f;
+        if (wearOn && p.weathering > 0.0f) {
+            const float streaks = fbm(u * 90.0f, v * 8.0f, d.period(90, 8), layer(kWeather), 4);
+            const float patches = fbm(u * 3.0f, v * 2.0f, d.period(3, 2), layer(kWeather) ^ 5u, 3);
+            const float flecks = noise::value(u * 260.0f, v * 36.0f, d.period(260, 36), layer(kWeather) ^ 11u);
+            const float s = 0.5f + 0.8f * streaks + 0.6f * patches - 0.3f * saturate(late) + 0.35f * (flecks - 0.5f) +
+                            0.15f * (fiber - 0.5f);
+            const float t = 1.0f - p.weathering;
+            exposed = smoothstep(t - 0.06f, t + 0.06f, s);
+            const float lb = luminance(bare);
+            const Vec3 grey = Vec3{lb * 1.02f, lb, lb * 0.97f} * 1.2f + Vec3{0.02f, 0.02f, 0.02f};
+            const Vec3 weatheredWood = lerp(bare * 1.1f, grey, 0.35f + 0.35f * p.weathering);
+            col = lerp(col, weatheredWood, aw * exposed);
+            // Overall dull, greyish haze where the finish is thin.
+            const float lc = luminance(col);
+            col = lerp(col, Vec3{lc, lc, lc * 1.03f} * 1.05f, aw * p.weathering * 0.5f * fbm01(u * 2.0f, v * 2.0f, d.period(2), layer(kWeather) ^ 9u, 3));
+            rough = lerp(rough, 0.88f, aw * lerp(0.5f * p.weathering, 1.0f, exposed));
+            h -= aw * p.weathering * (0.2f * (1.0f - saturate(late)) + 0.06f * exposed + 0.08f * (0.5f - flecks));
+        }
 
         // --- Plank joints and bevels ---
         if (p.planks && p.gap > 0.0f) {
@@ -316,7 +415,7 @@ void WoodMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& out)
         col = lerp(col, Vec3{l, l, l} * 1.25f + Vec3{0.03f, 0.03f, 0.03f}, aw * fade * 0.6f);
         col = lerp(col, col * 1.15f + Vec3{0.02f, 0.02f, 0.02f}, aw * worn * 0.5f);
         rough = lerp(rough, 0.75f, aw * worn);
-        col = lerp(col, lerp(col, p.early * 1.25f, 0.35f), aw * scratch);
+        col = lerp(col, lerp(col, lerp(p.early * 1.2f, Vec3{0.6f, 0.58f, 0.55f}, 0.4f), 0.35f), aw * scratch);
         rough = lerp(rough, 0.85f, aw * scratch);
         h -= aw * (0.04f * scratch + 0.15f * dent);
         col = lerp(col, col * 0.85f, aw * dent);
@@ -326,7 +425,7 @@ void WoodMaterial::generateSurface(const GenerateContext& ctx, SurfaceMaps& out)
         out.albedo.at(x, y, 2) = saturate(col.z);
         out.height.at(x, y) = saturate(h);
         out.roughness.at(x, y) = saturate(rough);
-        out.wear.at(x, y) = saturate(std::max({scratch, dent, worn * 0.7f, fade * 0.4f}));
+        out.wear.at(x, y) = saturate(std::max({scratch, dent, worn * 0.7f, fade * 0.4f, exposed * 0.8f}));
     });
 }
 

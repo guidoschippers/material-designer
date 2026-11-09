@@ -45,3 +45,11 @@ Two bases, for floors and beams:
 2. **Pine planks**: light pine with pronounced annual rings (narrow dark orange-brown latewood lines),
    cathedral patterns, small dark knots with rings bending around them. Planks of different widths
    with tight joints and slight colour differences between planks.
+3. **Weathered, stained board**: one wide board with a dark grey-brown stain that has eroded in
+   streaks along the grain, exposing lighter tan wood; a blue-grey haze where the finish is thin.
+   Coarse, fibrous grain: ragged latewood lines broken into short dark streaks, tall narrow cathedral
+   arches, a faint knot, raised grain, a few white scratches and chalky spots.
+   Parameters: `stain` + `stain_color`, `fibrous`, `ring_irregularity`, `figure` and the wear
+   parameter `weathering`. Example: `--set plank_width=1 --set plank_length=1 --set plank_gap=0
+   --set grain_scale=0.7 --set ring_density=0.35 --set figure=1 --set fibrous=0.7 --set stain=0.9
+   --set ring_contrast=0.7 --set gloss=0.2 --set weathering=0.5 --set scratches=0.15 --wear 1`.
