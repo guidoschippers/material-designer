@@ -19,6 +19,7 @@ Two front-ends share one generation core:
 | `concrete` | base | broom finish or formwork boards, exposed aggregate, pores, saw-cut joints; wear: chips, water stains, dirt & moss, efflorescence |
 | `wood` | base | pine / oak / walnut, flat-sawn irregular rings with cathedral figures, fibrous grain, knots, (limed) pores, stain, staggered planks; wear: scratches, dents, sun fading, worn varnish, weathering |
 | `grass` | base | layered blades, clumps, dry blades, clover, flowers, fallen leaves; wear: trampled path, dry patches, bare soil |
+| `cardboard` | base | brown corrugated box: kraft liner with fibres, shives and recycled specks, flutes faintly showing as ridges along V; wear: scuffs, creases, dents, water stains with tide marks, dust, tape residue |
 | `asphalt_edge` | overlay | crumbling, binder-rich asphalt along a kerb (tiles vertically, with opacity map) |
 | `road_marking` | overlay | painted dash or continuous line that follows the surface texture and wears |
 

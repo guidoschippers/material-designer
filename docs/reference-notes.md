@@ -53,3 +53,20 @@ Two bases, for floors and beams:
    parameter `weathering`. Example: `--set plank_width=1 --set plank_length=1 --set plank_gap=0
    --set grain_scale=0.7 --set ring_density=0.35 --set figure=1 --set fibrous=0.7 --set stain=0.9
    --set ring_contrast=0.7 --set gloss=0.2 --set weathering=0.5 --set scratches=0.15 --wear 1`.
+
+## Cardboard
+
+For the moving box in the attic of the Racecars main menu (no photo; described by the owner):
+the outside of an old brown corrugated shipping box, single-wall board with a kraft liner.
+
+- Kraft brown liner, slightly mottled, with fine light and dark paper fibres (lying mostly across
+  the flutes, the paper's machine direction), a few dark woody shives and small recycled specks.
+- The flutes faintly show through the liner as subtle parallel ridges, only in relief (normal map),
+  hardly in colour. **The flutes run along V**: each ridge is a vertical line of constant u, repeating
+  across U (`flute_spacing`, rounded so the texture tiles).
+- Matte paper roughness with slight variation.
+- Wear of a box that has spent years in an attic: abraded scuffs (lighter, fuzzy), fold creases
+  (groove, crushed flutes, a light cracked line) and soft dents, water stains with darker tide-mark
+  rings, greyish dust collecting in low areas, faint yellowed tape residue with torn paper.
+  Example for an old, worn moving box: `--seed 1998 --wear 0.8 --set scuffs=0.6 --set creases=0.6
+  --set dents=0.4 --set water_stains=0.5 --set dirt=0.6 --set tape_residue=0.3`.
