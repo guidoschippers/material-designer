@@ -311,8 +311,9 @@ json paramDefToJson(const ParamDef& d)
 
 json describeMaterial(const Material& material)
 {
+    const TileAxes tiles = material.tileAxes(ParamReader(material.schema(), material.schema().defaults()));
     json mapList = json::array();
-    for (MapType m : kAllMaps) {
+    for (MapType m : material.outputMaps().list()) {
         mapList.push_back({{"id", std::string(mapId(m))}, {"label", std::string(mapLabel(m))}});
     }
     json params = json::array();
@@ -328,6 +329,8 @@ json describeMaterial(const Material& material)
         {"id", std::string(material.id())},
         {"name", std::string(material.displayName())},
         {"description", std::string(material.description())},
+        {"overlay", material.isOverlay()},
+        {"tiling", {{"u", tiles.u}, {"v", tiles.v}}},
         {"maps", mapList},
         {"common",
          {

@@ -17,13 +17,14 @@ const ImageF& MaterialMaps::get(MapType map) const
     case MapType::Height: return height;
     case MapType::AmbientOcclusion: return ao;
     case MapType::Wear: return wear;
+    case MapType::Opacity: return opacity;
     }
     return albedo;
 }
 
 SurfaceMaps::SurfaceMaps(int s)
     : size(s), albedo(s, s, 3, srgbToLinear(0.5f)), height(s, s, 1, 0.5f), roughness(s, s, 1, 0.5f),
-      wear(s, s, 1, 0.0f), occlusion(s, s, 1, 1.0f)
+      wear(s, s, 1, 0.0f), occlusion(s, s, 1, 1.0f), opacity(s, s, 1, 1.0f)
 {
 }
 
@@ -44,17 +45,19 @@ MaterialMaps Material::generate(const MaterialSettings& settings, const Generate
     }
 
     const ParamReader params(schema(), settings.params);
-    const GenerateContext ctx(settings.common, params, size, options.stop);
+    const TileAxes tiles = tileAxes(params);
+    const GenerateContext ctx(settings.common, params, size, tiles, options.stop);
 
     SurfaceMaps surface(size);
     generateSurface(ctx, surface);
     ctx.throwIfCancelled();
 
-    const bool wrap = settings.common.seamless;
+    const Wrap wrap(ctx.seamlessU(), ctx.seamlessV());
     const float depth = reliefDepth() * static_cast<float>(settings.common.normalStrength);
 
     MaterialMaps maps;
     maps.size = size;
+    maps.available = outputMaps();
     maps.normal = normalFromHeight(surface.height, depth, wrap, settings.common.normalConvention, options.stop);
     // AO uses the material's natural relief (not the user's normal strength) so it stays physically plausible.
     maps.ao = ambientOcclusion(surface.height, reliefDepth(), wrap, options.stop);
@@ -65,6 +68,7 @@ MaterialMaps Material::generate(const MaterialSettings& settings, const Generate
     maps.roughness = std::move(surface.roughness);
     maps.height = std::move(surface.height);
     maps.wear = settings.common.wear ? std::move(surface.wear) : ImageF(size, size, 1, 0.0f);
+    maps.opacity = isOverlay() ? std::move(surface.opacity) : ImageF(size, size, 1, 1.0f);
     ctx.throwIfCancelled();
     return maps;
 }

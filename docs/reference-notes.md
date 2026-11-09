@@ -12,8 +12,7 @@ built-in materials. (The photos themselves are not stored in the repository.)
 - Cracks: a single long **meandering** crack (~1 cm wide) across the surface, with crumbled edges
   where stones have broken out. Not a polygonal network.
 - Edge against a kerb: a darker, binder-rich band where stones have come loose (crumbling edge).
-  This is location-specific and does not belong in a seamless texture; candidate for a separate
-  edge-strip / overlay texture (open question).
+  Implemented as the `asphalt_edge` overlay (decided: overlays, not baked into the base texture).
 
 ## Concrete
 
@@ -28,7 +27,7 @@ built-in materials. (The photos themselves are not stored in the repository.)
 
 - White paint, rounded corners, slightly worn: the paint follows the surface texture, is thinner
   on stone tops and partly worn away in places, showing the surface underneath.
-- Location-specific like the asphalt edge; candidate for an overlay / decal (open question).
+- Implemented as the `road_marking` overlay.
 
 ## Grass (from the grass next to the concrete)
 

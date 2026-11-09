@@ -29,7 +29,7 @@ public:
     {
         const auto& p = ctx.params();
         const int f = md::noise::frequency(p.getFloat("scale"));
-        const auto period = md::noise::periodFor(f, f, ctx.seamless());
+        const md::noise::Period period{ctx.seamlessU() ? f : 0, ctx.seamlessV() ? f : 0};
         const int octaves = p.getInt("octaves");
         const bool invert = p.getBool("invert");
         ctx.forEachPixel([&](int x, int y, float u, float v) {

@@ -5,6 +5,26 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+
+/// Blends RGBA pixels over a grey checkerboard using an opacity map (for overlays).
+void compositeOverCheckerboard(std::vector<std::uint8_t>& rgba, int size, const md::ImageF& opacity)
+{
+    const int cell = std::max(8, size / 32);
+    for (int y = 0; y < size; ++y) {
+        for (int x = 0; x < size; ++x) {
+            const std::size_t i = static_cast<std::size_t>(y) * size + x;
+            const float a = std::clamp(opacity.at(x, y), 0.0f, 1.0f);
+            const float bg = ((x / cell + y / cell) % 2 == 0) ? 90.0f : 140.0f;
+            for (int c = 0; c < 3; ++c) {
+                rgba[i * 4 + c] = static_cast<std::uint8_t>(std::lround(bg + (rgba[i * 4 + c] - bg) * a));
+            }
+        }
+    }
+}
+
+} // namespace
+
 void PreviewPanel::setMaps(md::MaterialMaps maps)
 {
     maps_ = std::move(maps);
@@ -18,15 +38,23 @@ void PreviewPanel::uploadIfNeeded(ID3D11Device* device, ID3D11DeviceContext* con
     }
     // Same encoders as the exporter: what you see is what gets written.
     const md::EncodedMap encoded = md::encodeMap(maps_, map_);
-    const std::vector<std::uint8_t> rgba = md::toRgba8(encoded);
+    std::vector<std::uint8_t> rgba = md::toRgba8(encoded);
+    if (showAlpha_ && map_ == md::MapType::Albedo && maps_.available.contains(md::MapType::Opacity)) {
+        compositeOverCheckerboard(rgba, encoded.width, maps_.opacity);
+    }
     texture_.update(device, context, encoded.width, encoded.height, rgba.data());
     dirty_ = false;
 }
 
 void PreviewPanel::draw(ID3D11Device* device, ID3D11DeviceContext* context, const std::string& status)
 {
-    // Toolbar: map selector.
-    for (md::MapType m : md::kAllMaps) {
+    // Toolbar: map selector (only maps the material produces).
+    const md::MapSet available = maps_.size > 0 ? maps_.available : md::MapSet::standard();
+    if (!available.contains(map_)) {
+        map_ = md::MapType::Albedo;
+        dirty_ = true;
+    }
+    for (md::MapType m : available.list()) {
         if (m != md::MapType::Albedo) ImGui::SameLine();
         if (ImGui::RadioButton(std::string(md::mapLabel(m)).c_str(), map_ == m)) {
             map_ = m;
@@ -35,6 +63,11 @@ void PreviewPanel::draw(ID3D11Device* device, ID3D11DeviceContext* context, cons
     }
     ImGui::Checkbox("Tile 2x2", &tiled_);
     ImGui::SetItemTooltip("Shows the texture repeated 2x2 to check that it is seamless.");
+    if (available.contains(md::MapType::Opacity)) {
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Transparency", &showAlpha_)) dirty_ = true;
+        ImGui::SetItemTooltip("Overlay: show the albedo blended over a checkerboard using the opacity map.");
+    }
     ImGui::SameLine();
     if (ImGui::Button("Fit")) {
         zoom_ = 1.0f;

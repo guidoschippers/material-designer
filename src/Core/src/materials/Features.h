@@ -15,10 +15,13 @@ namespace md::features {
 
 /// Per-run sampling information.
 struct Domain {
-    bool seamless = true;
+    bool seamlessU = true; ///< output must tile horizontally
+    bool seamlessV = true; ///< output must tile vertically
     float pixel = 1.0f / 1024.0f; ///< Size of one pixel in UV units (for anti-aliasing).
 
-    noise::Period period(int fx, int fy) const { return noise::periodFor(fx, fy, seamless); }
+    /// Seamlessness of the u axis (true) or the v axis (false).
+    bool seamlessAxis(bool uAxis) const { return uAxis ? seamlessU : seamlessV; }
+    noise::Period period(int fx, int fy) const { return {seamlessU ? fx : 0, seamlessV ? fy : 0}; }
     noise::Period period(int f) const { return period(f, f); }
     /// Smoothstep width (in UV units) that anti-aliases an edge over ~1.5 pixels.
     float aa() const { return 1.5f * pixel; }
@@ -128,8 +131,8 @@ inline float blobs(float u, float v, int cells, std::uint32_t seed, float probab
     for (int dy = -1; dy <= 1; ++dy) {
         for (int dx = -1; dx <= 1; ++dx) {
             const int gx = cx + dx, gy = cy + dy;
-            const std::uint32_t id = noise::hashCell(noise::wrapIndex(gx, d.seamless ? cells : 0),
-                                                     noise::wrapIndex(gy, d.seamless ? cells : 0), seed);
+            const std::uint32_t id = noise::hashCell(noise::wrapIndex(gx, d.seamlessU ? cells : 0),
+                                                     noise::wrapIndex(gy, d.seamlessV ? cells : 0), seed);
             if (noise::randomFromId(id, 0) >= probability) {
                 continue;
             }
@@ -175,8 +178,8 @@ inline RectSample rectangles(float u, float v, int cells, std::uint32_t seed, fl
     for (int dy = -1; dy <= 1; ++dy) {
         for (int dx = -1; dx <= 1; ++dx) {
             const int gx = cx + dx, gy = cy + dy;
-            const std::uint32_t id = noise::hashCell(noise::wrapIndex(gx, d.seamless ? cells : 0),
-                                                     noise::wrapIndex(gy, d.seamless ? cells : 0), seed);
+            const std::uint32_t id = noise::hashCell(noise::wrapIndex(gx, d.seamlessU ? cells : 0),
+                                                     noise::wrapIndex(gy, d.seamlessV ? cells : 0), seed);
             if (noise::randomFromId(id, 0) >= probability) {
                 continue;
             }

@@ -107,7 +107,7 @@ TEST_CASE("CLI generate works for every material")
         REQUIRE(r.exitCode == 0);
         const json j = json::parse(r.out);
         CHECK(j["ok"] == true);
-        CHECK(j["files"].size() == 6);
+        CHECK(j["files"].size() == m->outputMaps().list().size());
         for (const auto& f : j["files"]) {
             const std::string path = f["path"].get<std::string>();
             CHECK(std::filesystem::exists(std::filesystem::path(std::u8string(path.begin(), path.end()))));

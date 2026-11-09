@@ -113,7 +113,7 @@ void MainWindow::drawSettingsPane()
 
             ImGui::BeginChild("params", ImVec2(0, 0));
             ImGui::PushItemWidth(-ImGui::GetFontSize() * 9.0f);
-            bool changed = drawCommonSettings(s.common);
+            bool changed = drawCommonSettings(s.common, m->outputMaps());
             changed |= drawMaterialParameters(*m, s);
             ImGui::PopItemWidth();
             ImGui::EndChild();

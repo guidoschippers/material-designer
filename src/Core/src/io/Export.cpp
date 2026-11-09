@@ -61,6 +61,7 @@ EncodedMap encodeMap(const MaterialMaps& maps, MapType map)
     case MapType::Roughness:
     case MapType::AmbientOcclusion:
     case MapType::Wear:
+    case MapType::Opacity:
         e.channels = 1;
         e.format = "png-gray8-linear";
         e.data8.resize(pixels);
@@ -122,7 +123,8 @@ ExportResult exportMaps(const MaterialMaps& maps, const MaterialSettings& settin
     if (settings.common.maps.contains(MapType::Wear) && !settings.common.wear) {
         result.warnings.push_back("wear map requested but wear is disabled; the wear map is black");
     }
-    for (MapType map : settings.common.maps.list()) {
+    // Only maps the material produces (e.g. Opacity exists for overlays only).
+    for (MapType map : (settings.common.maps & maps.available).list()) {
         const EncodedMap e = encodeMap(maps, map);
         const auto path = mapFilePath(dir, settings, map);
         if (e.bitDepth == 16) {

@@ -31,6 +31,7 @@ private:
     md::MapType map_ = md::MapType::Albedo;
     bool dirty_ = false;
     bool tiled_ = false;
+    bool showAlpha_ = true; ///< overlays: composite albedo over a checkerboard
     float zoom_ = 1.0f; ///< 1 = fit to the panel
     float panX_ = 0.0f, panY_ = 0.0f; ///< in units of the displayed image size
     int previewSize_ = 1024;

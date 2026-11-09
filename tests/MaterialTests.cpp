@@ -133,9 +133,14 @@ TEST_CASE("Seamless output tiles on all edges")
 {
     for (const auto& m : MaterialRegistry::builtin().all()) {
         for (bool wear : {false, true}) {
-            const MaterialMaps maps = m->generate(testSettings(*m, 256, true, wear));
+            const MaterialSettings settings = testSettings(*m, 256, true, wear);
+            const MaterialMaps maps = m->generate(settings);
+            const TileAxes tiles = m->tileAxes(ParamReader(m->schema(), settings.params));
             for (MapType map : kAllMaps) {
                 for (bool horizontal : {true, false}) {
+                    if (!(horizontal ? tiles.u : tiles.v)) {
+                        continue; // overlays may tile on one axis only
+                    }
                     INFO("material: " << m->id() << ", map: " << mapId(map) << ", wear: " << wear
                                       << (horizontal ? ", left/right" : ", top/bottom"));
                     const SeamStats s = seamStats(maps.get(map), horizontal);
@@ -144,6 +149,38 @@ TEST_CASE("Seamless output tiles on all edges")
                 }
             }
         }
+    }
+}
+
+TEST_CASE("Overlays produce a meaningful opacity map; base materials are opaque")
+{
+    for (const auto& m : MaterialRegistry::builtin().all()) {
+        INFO("material: " << m->id());
+        const MaterialMaps maps = m->generate(testSettings(*m, 128, true, true));
+        const auto [lo, hi] = std::minmax_element(maps.opacity.data().begin(), maps.opacity.data().end());
+        CHECK(maps.available.contains(MapType::Opacity) == m->isOverlay());
+        if (m->isOverlay()) {
+            CHECK(*lo < 0.05f); // transparent somewhere
+            CHECK(*hi > 0.8f);  // (nearly) opaque somewhere
+        } else {
+            CHECK(*lo == 1.0f);
+        }
+    }
+}
+
+TEST_CASE("A continuous road marking tiles vertically")
+{
+    const Material* m = MaterialRegistry::builtin().find("road_marking");
+    REQUIRE(m);
+    MaterialSettings s = testSettings(*m, 256, true, true);
+    s.params["shape"] = std::string("continuous");
+    const TileAxes tiles = m->tileAxes(ParamReader(m->schema(), s.params));
+    REQUIRE(tiles.v);
+    REQUIRE_FALSE(tiles.u);
+    const MaterialMaps maps = m->generate(s);
+    for (MapType map : kAllMaps) {
+        INFO("map: " << mapId(map));
+        CHECK(isSeamless(seamStats(maps.get(map), false)));
     }
 }
 

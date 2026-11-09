@@ -25,6 +25,7 @@ std::string_view mapId(MapType map)
     case MapType::Height: return "height";
     case MapType::AmbientOcclusion: return "ao";
     case MapType::Wear: return "wear";
+    case MapType::Opacity: return "opacity";
     }
     return "unknown";
 }
@@ -38,6 +39,7 @@ std::string_view mapLabel(MapType map)
     case MapType::Height: return "Height";
     case MapType::AmbientOcclusion: return "Ambient Occlusion";
     case MapType::Wear: return "Wear mask";
+    case MapType::Opacity: return "Opacity";
     }
     return "Unknown";
 }

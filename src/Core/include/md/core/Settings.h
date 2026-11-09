@@ -14,13 +14,14 @@
 namespace md {
 
 /// The texture maps a material produces.
-enum class MapType { Albedo, Normal, Roughness, Height, AmbientOcclusion, Wear };
+enum class MapType { Albedo, Normal, Roughness, Height, AmbientOcclusion, Wear, Opacity };
 
-inline constexpr int kMapCount = 6;
+inline constexpr int kMapCount = 7;
 inline constexpr std::array<MapType, kMapCount> kAllMaps = {
-    MapType::Albedo, MapType::Normal, MapType::Roughness, MapType::Height, MapType::AmbientOcclusion, MapType::Wear};
+    MapType::Albedo, MapType::Normal,          MapType::Roughness, MapType::Height,
+    MapType::AmbientOcclusion, MapType::Wear, MapType::Opacity};
 
-/// Stable identifier used in file names, presets and the CLI: albedo, normal, roughness, height, ao, wear.
+/// Stable identifier used in file names, presets and the CLI: albedo, normal, roughness, height, ao, wear, opacity.
 std::string_view mapId(MapType map);
 /// Display name, e.g. "Ambient Occlusion".
 std::string_view mapLabel(MapType map);
@@ -32,6 +33,8 @@ class MapSet {
 public:
     MapSet() = default;
     static MapSet all() { MapSet s; s.bits_ = (1u << kMapCount) - 1u; return s; }
+    /// The maps every material produces (all except Opacity, which only overlays have).
+    static MapSet standard() { MapSet s = all(); s.set(MapType::Opacity, false); return s; }
 
     bool contains(MapType m) const { return (bits_ >> static_cast<unsigned>(m)) & 1u; }
     void set(MapType m, bool on)
@@ -40,6 +43,7 @@ public:
         bits_ = on ? (bits_ | bit) : (bits_ & ~bit);
     }
     bool empty() const { return bits_ == 0; }
+    MapSet operator&(MapSet other) const { MapSet s; s.bits_ = bits_ & other.bits_; return s; }
     std::vector<MapType> list() const;
 
     bool operator==(const MapSet&) const = default;

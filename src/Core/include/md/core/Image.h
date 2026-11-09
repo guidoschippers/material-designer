@@ -6,6 +6,15 @@
 
 namespace md {
 
+/// Edge addressing per axis: wrap around (periodic) or clamp to the edge.
+struct Wrap {
+    bool x = false;
+    bool y = false;
+    constexpr Wrap() = default;
+    constexpr Wrap(bool both) : x(both), y(both) {} // NOLINT: implicit on purpose
+    constexpr Wrap(bool wrapX, bool wrapY) : x(wrapX), y(wrapY) {}
+};
+
 /// Planar-interleaved floating point image (row-major, channels interleaved per pixel).
 class ImageF {
 public:
@@ -27,16 +36,11 @@ public:
     float& at(int x, int y, int c = 0) { return data_[index(x, y) + c]; }
     float at(int x, int y, int c = 0) const { return data_[index(x, y) + c]; }
 
-    /// Pixel read with wrap-around (periodic) or clamp-to-edge addressing.
-    float sample(int x, int y, int c, bool wrap) const
+    /// Pixel read with wrap-around (periodic) or clamp-to-edge addressing per axis.
+    float sample(int x, int y, int c, Wrap wrap) const
     {
-        if (wrap) {
-            x = ((x % width_) + width_) % width_;
-            y = ((y % height_) + height_) % height_;
-        } else {
-            x = x < 0 ? 0 : (x >= width_ ? width_ - 1 : x);
-            y = y < 0 ? 0 : (y >= height_ ? height_ - 1 : y);
-        }
+        x = wrap.x ? ((x % width_) + width_) % width_ : (x < 0 ? 0 : (x >= width_ ? width_ - 1 : x));
+        y = wrap.y ? ((y % height_) + height_) % height_ : (y < 0 ? 0 : (y >= height_ ? height_ - 1 : y));
         return at(x, y, c);
     }
 

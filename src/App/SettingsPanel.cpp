@@ -83,7 +83,7 @@ bool drawParam(const md::ParamDef& def, md::ParamValue& value)
 
 } // namespace
 
-bool drawCommonSettings(md::CommonSettings& c)
+bool drawCommonSettings(md::CommonSettings& c, md::MapSet availableMaps)
 {
     bool changed = false;
     ImGui::SeparatorText("Common");
@@ -135,7 +135,7 @@ bool drawCommonSettings(md::CommonSettings& c)
 
     ImGui::TextUnformatted("Export maps");
     if (ImGui::BeginTable("maps", 3)) {
-        for (md::MapType m : md::kAllMaps) {
+        for (md::MapType m : availableMaps.list()) {
             ImGui::TableNextColumn();
             bool on = c.maps.contains(m);
             if (ImGui::Checkbox(std::string(md::mapLabel(m)).c_str(), &on)) {

@@ -39,25 +39,25 @@ void boxLine(const float* src, float* dst, int count, int stride, int channels, 
 
 } // namespace
 
-ImageF boxBlur(const ImageF& src, int radius, bool wrap, std::stop_token stop)
+ImageF boxBlur(const ImageF& src, int radius, Wrap wrap, std::stop_token stop)
 {
     if (radius <= 0) {
         return src;
     }
     const int w = src.width(), h = src.height(), ch = src.channels();
     ImageF tmp(w, h, ch);
-    parallelFor(h, [&](int y) { boxLine(src.row(y), tmp.row(y), w, ch, ch, radius, wrap); }, stop);
+    parallelFor(h, [&](int y) { boxLine(src.row(y), tmp.row(y), w, ch, ch, radius, wrap.x); }, stop);
 
     ImageF out(w, h, ch);
     const int rowStride = w * ch;
     parallelFor(w, [&](int x) {
         boxLine(tmp.data().data() + static_cast<std::ptrdiff_t>(x) * ch,
-                out.data().data() + static_cast<std::ptrdiff_t>(x) * ch, h, rowStride, ch, radius, wrap);
+                out.data().data() + static_cast<std::ptrdiff_t>(x) * ch, h, rowStride, ch, radius, wrap.y);
     }, stop);
     return out;
 }
 
-ImageF gaussianBlur(const ImageF& src, float sigma, bool wrap, std::stop_token stop)
+ImageF gaussianBlur(const ImageF& src, float sigma, Wrap wrap, std::stop_token stop)
 {
     // Three box passes of radius r approximate a Gaussian with sigma^2 = 3 * ((2r+1)^2 - 1) / 12.
     const int radius = static_cast<int>(std::lround(std::sqrt(sigma * sigma + 0.25f) - 0.5f));
@@ -69,7 +69,7 @@ ImageF gaussianBlur(const ImageF& src, float sigma, bool wrap, std::stop_token s
     return boxBlur(a, radius, wrap, stop);
 }
 
-ImageF normalFromHeight(const ImageF& height, float depth, bool wrap, NormalConvention convention, std::stop_token stop)
+ImageF normalFromHeight(const ImageF& height, float depth, Wrap wrap, NormalConvention convention, std::stop_token stop)
 {
     const int w = height.width(), h = height.height();
     ImageF out(w, h, 3);
@@ -93,7 +93,7 @@ ImageF normalFromHeight(const ImageF& height, float depth, bool wrap, NormalConv
     return out;
 }
 
-ImageF ambientOcclusion(const ImageF& height, float depth, bool wrap, std::stop_token stop)
+ImageF ambientOcclusion(const ImageF& height, float depth, Wrap wrap, std::stop_token stop)
 {
     const int w = height.width(), h = height.height();
     // Radii as fractions of the texture width, so the result is resolution independent.

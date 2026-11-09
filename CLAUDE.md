@@ -67,6 +67,18 @@ Public headers live in `src/Core/include/md/...`, sources in `src/Core/src/...`.
   16-bit) and PNG writing. 16-bit PNGs use a small built-in encoder on top of stb's zlib
   (stb_image_write only writes 8-bit PNG).
 
+### Base materials and overlays
+
+- **Base materials** (asphalt, ...) tile on both axes and produce the six standard maps.
+- **Overlays** (`asphalt_edge`, `road_marking`) are meant to be blended over a base material.
+  They override `outputMaps()` to add `MapType::Opacity` (written as `<material>_<seed>_opacity.png`,
+  8-bit linear) and `tileAxes()` to tile on one axis only (edge strip: vertical) or not at all
+  (single dash decal). Location-specific details (kerb edges, markings) belong in overlays, never
+  in a seamless base texture.
+- `asphalt_edge` reuses the asphalt surface model (`materials/AsphaltSurface.h`) with the same
+  aggregate parameter keys, so with the same seed and aggregate settings its stones line up
+  exactly with the base asphalt.
+
 ### Generation rules (keep these when writing materials)
 
 - Work in UV space `[0, 1)`; never in pixels. Feature sizes are fractions of the texture so the
